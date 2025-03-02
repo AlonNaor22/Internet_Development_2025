@@ -1,0 +1,424 @@
+# GameStore Project Reference Guide
+
+This document provides a detailed reference of the GameStore project, focusing on functions, variables, and file connections to help understand the project structure and relationships.
+
+## Table of Contents
+1. [Project Overview](#project-overview)
+2. [Model Layer](#model-layer)
+3. [DAO Layer](#dao-layer)
+4. [Service Layer](#service-layer)
+5. [Controller Layer](#controller-layer)
+6. [Network Layer](#network-layer)
+7. [File Connections and Dependencies](#file-connections-and-dependencies)
+8. [Key Workflows](#key-workflows)
+
+## Project Overview
+
+The GameStore is a client-server application for managing a computer game store. It follows a layered architecture:
+
+- **Model Layer**: Data objects (Game, User)
+- **DAO Layer**: Data Access Objects for persistence
+- **Service Layer**: Business logic
+- **Controller Layer**: Request handling and response generation
+- **Network Layer**: Client-server communication
+
+## Model Layer
+
+### Game.java
+**Purpose**: Represents a game in the store
+**Implements**: Serializable
+
+**Key Variables**:
+- `name` (String): Game name, serves as unique identifier
+- `sizeGB` (double): Game size in gigabytes
+- `genres` (List<String>): List of game genres
+- `description` (String): Game description
+- `minAge` (int): Minimum age to play the game
+- `imageUrl` (String): Link to game image (optional)
+
+**Key Methods**:
+- `Game()`: Default constructor
+- `Game(String name, double sizeGB, List<String> genres, String description, int minAge, String imageUrl)`: Full constructor
+- `Game(String name, double sizeGB, String description, int minAge)`: Constructor with required fields
+- Getters and setters for all fields
+- `addGenre(String genre)`: Add a genre to the game
+- `removeGenre(String genre)`: Remove a genre from the game
+- `equals(Object o)`: Comparison based on game name only
+- `hashCode()`: Hash code based on game name
+- `toString()`: String representation of the game
+
+**Connections**:
+- Used by GameFileDao for persistence
+- Used by GameService for business logic
+- Used by GameController for request handling
+- Referenced in User.java as part of the user's game library
+
+### User.java
+**Purpose**: Represents a user in the system
+**Implements**: Serializable
+
+**Key Variables**:
+- `username` (String): Username, serves as unique identifier
+- `password` (String): Password
+- `fullName` (String): Full name
+- `email` (String): Email address
+- `age` (int): Age
+- `gameLibrary` (Map<String, Game>): User's game library (key: game name)
+
+**Key Methods**:
+- `User()`: Default constructor
+- `User(String username, String password, String fullName, String email, int age)`: Full constructor
+- Getters and setters for all fields
+- `getGameLibrary()`: Returns a copy of the game library
+- `addGame(Game game)`: Add a game to the library
+- `removeGame(String gameName)`: Remove a game from the library
+- `hasGame(String gameName)`: Check if a game exists in the library
+- `equals(Object o)`: Comparison based on username only
+- `hashCode()`: Hash code based on username
+- `toString()`: String representation of the user (without password)
+
+**Connections**:
+- Used by UserFileDao for persistence
+- Used by UserService for business logic
+- Used by UserController for request handling
+
+## DAO Layer
+
+### IDao.java
+**Purpose**: Generic interface for data access
+**Type Parameters**:
+- `T`: Type of object the DAO handles
+- `ID`: Type of the object's identifier
+
+**Key Methods**:
+- `T save(T entity)`: Save an object (update if it already exists)
+- `boolean delete(ID id)`: Delete an object by ID
+- `T get(ID id)`: Retrieve an object by ID
+- `Collection<T> getAll()`: Retrieve all objects
+- `boolean exists(ID id)`: Check if an object exists by ID
+
+**Connections**:
+- Implemented by GameFileDao and UserFileDao
+- Used by GameService and UserService
+
+### GameFileDao.java
+**Purpose**: Implements IDao for games using file persistence
+**Implements**: IDao<Game, String>
+
+**Key Variables**:
+- `DEFAULT_FILE_PATH` (String): Default path to the save file ("data/games.dat")
+- `filePath` (String): Path to the save file
+- `gamesMap` (Map<String, Game>): In-memory map of games
+
+**Key Methods**:
+- `GameFileDao(String filePath)`: Constructor with custom file path
+- `GameFileDao()`: Constructor using default path
+- `save(Game game)`: Save a game (update if it already exists)
+- `delete(String name)`: Delete a game by name
+- `get(String name)`: Retrieve a game by name
+- `getAll()`: Retrieve all games
+- `exists(String name)`: Check if a game exists by name
+- `loadGames()`: Load games from file
+- `saveGames()`: Save games to file
+
+**Connections**:
+- Implements IDao<Game, String>
+- Used by GameService
+- Created in Server.java
+
+### UserFileDao.java
+**Purpose**: Implements IDao for users using file persistence
+**Implements**: IDao<User, String>
+
+**Key Variables**:
+- `DEFAULT_FILE_PATH` (String): Default path to the save file ("data/users.dat")
+- `filePath` (String): Path to the save file
+- `usersMap` (Map<String, User>): In-memory map of users
+
+**Key Methods**:
+- `UserFileDao(String filePath)`: Constructor with custom file path
+- `UserFileDao()`: Constructor using default path
+- `save(User user)`: Save a user (update if it already exists)
+- `delete(String username)`: Delete a user by username
+- `get(String username)`: Retrieve a user by username
+- `getAll()`: Retrieve all users
+- `exists(String username)`: Check if a user exists by username
+- `loadUsers()`: Load users from file
+- `saveUsers()`: Save users to file
+
+**Connections**:
+- Implements IDao<User, String>
+- Used by UserService
+- Created in Server.java
+
+## Service Layer
+
+### GameService.java
+**Purpose**: Provides business logic for game-related operations
+
+**Key Variables**:
+- `gameDao` (IDao<Game, String>): DAO for games
+- `stringMatcher` (IAlgoStringMatching): Search algorithm
+
+**Key Methods**:
+- `GameService(IDao<Game, String> gameDao)`: Constructor
+- `setStringMatcher(IAlgoStringMatching matcher)`: Change the search algorithm
+- `getGame(String name)`: Retrieve a game by name
+- `getAllGames()`: Retrieve all games
+- `addGame(Game game)`: Add a new game
+- `updateGame(Game game)`: Update an existing game
+- `deleteGame(String name)`: Delete a game by name
+- `searchGamesByDescription(String query)`: Search games by description
+
+**Connections**:
+- Uses GameFileDao for data access
+- Used by GameController for request handling
+- Created in Server.java
+- Uses external algorithm module for string matching
+
+### UserService.java
+**Purpose**: Provides business logic for user-related operations
+
+**Key Variables**:
+- `userDao` (IDao<User, String>): DAO for users
+- `gameService` (GameService): Service for game operations
+
+**Key Methods**:
+- `UserService(IDao<User, String> userDao)`: Constructor
+- `UserService(IDao<User, String> userDao, GameService gameService)`: Constructor with game service
+- `authenticate(String username, String password)`: Authenticate a user
+- `getUser(String username)`: Retrieve a user by username
+- `getAllUsers()`: Retrieve all users
+- `addUser(User user)`: Add a new user
+- `updateUser(User user)`: Update an existing user
+- `deleteUser(String username)`: Delete a user by username
+- `getUserGames(String username)`: Get a user's games
+- `addGameToUser(String username, String gameName)`: Add a game to a user
+- `removeGameFromUser(String username, String gameName)`: Remove a game from a user
+
+**Connections**:
+- Uses UserFileDao for data access
+- Uses GameService for game operations
+- Used by UserController for request handling
+- Created in Server.java
+
+## Controller Layer
+
+### GameController.java
+**Purpose**: Handles game-related requests
+
+**Key Variables**:
+- `gameService` (GameService): Game service
+
+**Key Methods**:
+- `GameController(GameService gameService)`: Constructor
+- `getGame(String name)`: Retrieve game details
+- `getAllGames()`: Retrieve all games
+- `searchGames(String query)`: Search games by description
+- `addGame(Game game)`: Add a new game
+- `updateGame(Game game)`: Update an existing game
+- `deleteGame(String name)`: Delete a game
+
+**Connections**:
+- Uses GameService for business logic
+- Created by ControllerFactory
+- Used by HandleRequest for request processing
+
+### UserController.java
+**Purpose**: Handles user-related requests
+
+**Key Variables**:
+- `userService` (UserService): User service
+
+**Key Methods**:
+- `UserController(UserService userService)`: Constructor
+- `login(String username, String password)`: User login
+- `register(User user)`: User registration
+- `getUser(String username)`: Retrieve user details
+- `updateUser(User user)`: Update user details
+- `getAllUsers()`: Retrieve all users
+- `getUserGames(String username)`: Get a user's games
+- `addGameToUser(String username, String gameName)`: Add a game to a user
+- `removeGameFromUser(String username, String gameName)`: Remove a game from a user
+
+**Connections**:
+- Uses UserService for business logic
+- Created by ControllerFactory
+- Used by HandleRequest for request processing
+
+### ControllerFactory.java
+**Purpose**: Factory for creating controllers
+
+**Key Variables**:
+- `userService` (UserService): User service
+- `gameService` (GameService): Game service
+
+**Key Methods**:
+- `ControllerFactory(UserService userService, GameService gameService)`: Constructor
+- `getController(String type)`: Get a controller by type
+
+**Connections**:
+- Creates UserController and GameController
+- Used by HandleRequest to get controllers
+- Created in Server.java
+
+## Network Layer
+
+### Request.java
+**Purpose**: Represents a client request
+
+**Key Variables**:
+- `headers` (Map<String, String>): Request headers (including "action")
+- `body` (Object): Request body (the data being transferred)
+
+**Key Methods**:
+- `Request(Map<String, String> headers, Object body)`: Constructor with all fields
+- `Request()`: Default constructor
+- `Request(String action, Object body)`: Constructor with action and body
+- Getters and setters for all fields
+- `getAction()`: Get the "action" header
+- `setAction(String action)`: Set the "action" header
+- `addHeader(String key, String value)`: Add a header
+- `getHeader(String key)`: Get a header value
+
+**Connections**:
+- Used by HandleRequest to process client requests
+
+### Response.java
+**Purpose**: Represents a server response
+
+**Key Variables**:
+- `status` (int): Status code (200 for success, 400 for error, etc.)
+- `message` (String): Status message
+- `data` (Object): Response data
+
+**Key Methods**:
+- `Response(int status, String message, Object data)`: Constructor with all fields
+- `Response()`: Default constructor
+- Getters and setters for all fields
+- `success(Object data)`: Create a success response with data
+- `success(String message, Object data)`: Create a success response with message and data
+- `error(String message)`: Create an error response with message
+- `error(int status, String message)`: Create an error response with status and message
+
+**Connections**:
+- Used by controllers to create responses
+- Used by HandleRequest to send responses to clients
+
+### HandleRequest.java
+**Purpose**: Handles a single client request
+
+**Key Variables**:
+- `clientSocket` (Socket): Connection to the client
+- `controllerFactory` (ControllerFactory): Controller factory
+- `gson` (Gson): JSON serializer/deserializer
+
+**Key Methods**:
+- `HandleRequest(Socket clientSocket, ControllerFactory controllerFactory)`: Constructor
+- `run()`: Handle the current request
+- `processRequest(Request request)`: Process request to response
+- `processUserRequest(UserController controller, String methodName, Request request)`: Process a user-related request
+- `processGameRequest(GameController controller, String methodName, Request request)`: Process a game-related request
+
+**Connections**:
+- Uses ControllerFactory to get controllers
+- Uses controllers to process requests
+- Created by Server for each client connection
+
+### Server.java
+**Purpose**: Manages the server and listens for requests
+
+**Key Variables**:
+- `port` (int): Port on which the server listens
+- `serverSocket` (ServerSocket): Server socket
+- `running` (boolean): Whether the server is running
+- `controllerFactory` (ControllerFactory): Controller factory
+- `threadPool` (ExecutorService): Thread pool for handling requests
+- `gameService` (GameService): Game service
+- `userService` (UserService): User service
+
+**Key Methods**:
+- `Server(int port)`: Constructor
+- `start()`: Start the server and listen for requests
+- `stop()`: Stop the server
+- `initializeData()`: Initialize initial data
+- `run()`: Run the server
+
+**Connections**:
+- Creates GameFileDao and UserFileDao
+- Creates GameService and UserService
+- Creates ControllerFactory
+- Creates HandleRequest for each client connection
+- Started by ServerDriver
+
+### ServerDriver.java
+**Purpose**: Entry point for the server application
+
+**Key Variables**:
+- `DEFAULT_PORT` (int): Default port (34567)
+
+**Key Methods**:
+- `main(String[] args)`: Entry point
+- `addShutdownHook(Server server)`: Add a shutdown hook for graceful server termination
+
+**Connections**:
+- Creates and starts the Server
+
+## File Connections and Dependencies
+
+### Model Layer Dependencies
+- Game.java: No dependencies on other project files
+- User.java: Depends on Game.java
+
+### DAO Layer Dependencies
+- IDao.java: No dependencies on other project files
+- GameFileDao.java: Depends on IDao.java and Game.java
+- UserFileDao.java: Depends on IDao.java and User.java
+
+### Service Layer Dependencies
+- GameService.java: Depends on IDao.java and Game.java
+- UserService.java: Depends on IDao.java, User.java, Game.java, and GameService.java
+
+### Controller Layer Dependencies
+- GameController.java: Depends on GameService.java, Game.java, and Response.java
+- UserController.java: Depends on UserService.java, User.java, Game.java, and Response.java
+- ControllerFactory.java: Depends on GameService.java, UserService.java, GameController.java, and UserController.java
+
+### Network Layer Dependencies
+- Request.java: No dependencies on other project files
+- Response.java: No dependencies on other project files
+- HandleRequest.java: Depends on ControllerFactory.java, GameController.java, UserController.java, Request.java, Response.java, Game.java, and User.java
+- Server.java: Depends on ControllerFactory.java, GameFileDao.java, UserFileDao.java, GameService.java, UserService.java, Game.java, User.java, and HandleRequest.java
+- ServerDriver.java: Depends on Server.java
+
+## Key Workflows
+
+### User Registration Workflow
+1. Client sends a registration request with user details
+2. HandleRequest receives the request and routes it to UserController.register()
+3. UserController validates the user data and calls UserService.addUser()
+4. UserService performs additional validation and calls UserDao.save()
+5. UserFileDao adds the user to the in-memory map and persists it to the file
+6. A success response is created and sent back to the client
+
+### Game Addition Workflow
+1. Client sends a game addition request with game details
+2. HandleRequest receives the request and routes it to GameController.addGame()
+3. GameController validates the game data and calls GameService.addGame()
+4. GameService performs additional validation and calls GameDao.save()
+5. GameFileDao adds the game to the in-memory map and persists it to the file
+6. A success response is created and sent back to the client
+
+### User Game Library Management Workflow
+1. Client sends a request to add a game to a user's library
+2. HandleRequest routes it to UserController.addGameToUser()
+3. UserController calls UserService.addGameToUser()
+4. UserService retrieves the user and game, adds the game to the user's library, and saves the user
+5. A success response is created and sent back to the client
+
+### Game Search Workflow
+1. Client sends a search request with a query
+2. HandleRequest routes it to GameController.searchGames()
+3. GameController calls GameService.searchGamesByDescription()
+4. GameService uses the string matching algorithm to find games matching the query
+5. A success response with the search results is created and sent back to the client

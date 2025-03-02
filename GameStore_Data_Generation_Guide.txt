@@ -1,0 +1,195 @@
+# GameStore Data Generation Guide
+
+This guide provides instructions for generating game and user data files for the GameStore project. These instructions are designed to be used by an AI program to create realistic data that conforms to the project's requirements.
+
+## File Structure and Location
+
+The GameStore project uses two main data files that should be placed in the "data" directory at the root of the project:
+
+1. `data/games.dat` - Stores serialized Game objects
+2. `data/users.dat` - Stores serialized User objects
+
+Both files contain serialized Java objects (specifically, a Map<String, Game> and Map<String, User> respectively).
+
+The full paths should be:
+- `[project_root]/data/games.dat`
+- `[project_root]/data/users.dat`
+
+These paths are hardcoded in the GameFileDao and UserFileDao classes as the default file paths:
+```java
+// In GameFileDao.java
+private static final String DEFAULT_FILE_PATH = "data/games.dat";
+
+// In UserFileDao.java
+private static final String DEFAULT_FILE_PATH = "data/users.dat";
+```
+
+## Game Data Generation Requirements
+
+When generating Game objects, follow these specifications:
+
+### Game Class Structure
+```java
+public class Game implements Serializable {
+    private String name;            // Game name (unique identifier)
+    private double sizeGB;          // Game size in gigabytes
+    private List<String> genres;    // List of game genres
+    private String description;     // Game description
+    private int minAge;             // Minimum age to play the game
+    private String imageUrl;        // Link to game image (optional)
+}
+```
+
+### Game Data Requirements
+
+1. **name** (String):
+   - Must be unique
+   - Should be a realistic game title
+   - Length: 2-50 characters
+   - Example: "The Witcher 3: Wild Hunt", "Minecraft", "Cyberpunk 2077"
+
+2. **sizeGB** (double):
+   - Realistic game size in gigabytes
+   - Range: 0.1 GB to 150 GB
+   - Modern AAA games: 30-150 GB
+   - Indie games: 0.1-10 GB
+   - Example: 50.0, 2.5, 85.3
+
+3. **genres** (List<String>):
+   - Each game should have 1-3 genres
+   - Choose from common game genres:
+     - Action, Adventure, RPG, Strategy, Simulation, Sports, Racing, Puzzle, Platformer, 
+       Shooter, FPS, Horror, Survival, MMO, MOBA, Card Game, Fighting, Stealth, Open World
+   - Example: ["RPG", "Adventure", "Open World"]
+
+4. **description** (String):
+   - IMPORTANT: Must be EXACTLY 100 words long
+   - Should describe the game's story, gameplay, and features
+   - Should be coherent and match the game's title and genres
+   - Example: "The Witcher 3: Wild Hunt is an action role-playing game set in a vast open world filled with danger, mystery, and adventure. Players take on the role of Geralt of Rivia, a monster hunter known as a Witcher, who is searching for his adopted daughter on the run from the Wild Hunt. The game features a dynamic day and night cycle, realistic weather patterns, and a complex combat system that combines swordplay, alchemy, and magic. Players can explore diverse landscapes, from war-ravaged swamps to bustling cities, while making choices that influence the state of the world and the lives of those around them."
+
+5. **minAge** (int):
+   - Age rating for the game
+   - Common values: 3, 7, 12, 16, 18
+   - Should align with game content (violent/mature games should have higher ratings)
+   - Example: 18 for violent games, 7 for family-friendly games
+
+6. **imageUrl** (String):
+   - URL to a game cover image
+   - Can be a placeholder URL
+   - Format: "https://example.com/images/[game-name].jpg"
+   - Example: "https://example.com/images/witcher3.jpg"
+
+## User Data Generation Requirements
+
+When generating User objects, follow these specifications:
+
+### User Class Structure
+```java
+public class User implements Serializable {
+    private String username;                    // Username (unique identifier)
+    private String password;                    // Password
+    private String fullName;                    // Full name
+    private String email;                       // Email address
+    private int age;                            // Age
+    private Map<String, Game> gameLibrary;      // User's game library (key: game name)
+}
+```
+
+### User Data Requirements
+
+1. **username** (String):
+   - Must be unique
+   - Length: 3-20 characters
+   - Can contain letters, numbers, and underscores
+   - Example: "gamer123", "john_doe", "elite_player"
+
+2. **password** (String):
+   - Length: 8-20 characters
+   - Should include a mix of uppercase, lowercase, numbers, and special characters
+   - Example: "P@ssw0rd123", "Gam3r!2023"
+
+3. **fullName** (String):
+   - Realistic full name
+   - Length: 5-50 characters
+   - Example: "John Smith", "Maria Rodriguez"
+
+4. **email** (String):
+   - Valid email format: username@domain.com
+   - Should match the username when possible
+   - Example: "gamer123@email.com", "john_doe@gmail.com"
+
+5. **age** (int):
+   - Range: 13-80
+   - Distribution should be realistic (more users in 18-35 range)
+   - Example: 25, 42, 19
+
+6. **gameLibrary** (Map<String, Game>):
+   - Each user should have 0-20 games in their library
+   - Games must exist in the games.dat file
+   - Users should only have games with age ratings appropriate for their age
+   - Example: A 15-year-old user should not have games with minAge of 18
+
+## Sample Data Generation
+
+### Sample Game Generation
+
+Generate 20-50 games with varied:
+- Genres (ensure all common genres are represented)
+- Age ratings (ensure games for all age groups)
+- Sizes (mix of small indie games and large AAA titles)
+
+### Sample User Generation
+
+Generate 10-30 users with varied:
+- Ages (ensure representation across different age groups)
+- Game libraries (some users with many games, some with few or none)
+
+### Special Users
+
+Always include these special users:
+1. Admin user:
+   - username: "admin"
+   - password: "admin123"
+   - fullName: "Administrator"
+   - email: "admin@gamestore.com"
+   - age: 30
+   - gameLibrary: All games
+
+2. Test user:
+   - username: "test"
+   - password: "test123"
+   - fullName: "Test User"
+   - email: "test@gamestore.com"
+   - age: 25
+   - gameLibrary: 5 random games
+
+## File Generation Process
+
+1. Create a Map<String, Game> for games
+2. Generate games according to the requirements and add them to the map
+3. Serialize the map to data/games.dat
+4. Create a Map<String, User> for users
+5. Generate users according to the requirements and add them to the map
+6. For each user, add appropriate games from the games map to their gameLibrary
+7. Serialize the map to data/users.dat
+
+## Serialization Format
+
+The data files use Java's standard serialization format. The serialized objects are:
+- games.dat: Map<String, Game> where the key is the game name
+- users.dat: Map<String, User> where the key is the username
+
+## Important Notes
+
+1. Ensure all game descriptions are EXACTLY 100 words long
+2. Ensure all game names are unique
+3. Ensure all usernames are unique
+4. Ensure users only have age-appropriate games in their libraries
+5. The data directory (`[project_root]/data/`) must exist before writing the files
+   - If it doesn't exist, create it first
+   - The application code will attempt to create this directory if it doesn't exist, but it's safer to ensure it exists beforehand
+6. Both Game and User classes implement Serializable
+7. The data files are automatically loaded when the server starts
+   - If the files don't exist, the server will create sample data
+   - If you want to use your custom data, make sure to place the files before starting the server

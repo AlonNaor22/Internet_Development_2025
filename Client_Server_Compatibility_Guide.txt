@@ -1,0 +1,369 @@
+# GameStore Client-Server Compatibility Guide
+
+This document provides guidelines for verifying compatibility between a client-side implementation and the existing server-side implementation of the GameStore project. It outlines the key requirements, interfaces, and protocols that must be followed to ensure proper communication and functionality.
+
+## 1. Network Communication Requirements
+
+### Communication Protocol
+- **Transport Protocol**: TCP/IP sockets
+- **Default Port**: 34567 (configurable via command-line arguments)
+- **Data Format**: JSON-encoded strings, terminated with newline characters
+- **Character Encoding**: UTF-8
+
+### Request Format
+Client requests must follow this format:
+```json
+{
+  "headers": {
+    "action": "controller/method"
+  },
+  "body": {
+    // Request-specific data
+  }
+}
+```
+
+Where:
+- `action` specifies the controller and method to call (e.g., "user/login", "game/getallgames")
+- `body` contains the data needed for the request (varies by endpoint)
+
+### Response Format
+Server responses follow this format:
+```json
+{
+  "status": 200,
+  "message": "OK",
+  "data": {
+    // Response-specific data
+  }
+}
+```
+
+Where:
+- `status` is the HTTP-like status code (200 for success, 400 for error)
+- `message` is a human-readable status message
+- `data` contains the response data (varies by endpoint)
+
+## 2. API Endpoints
+
+### User Controller Endpoints
+
+#### Login
+- **Action**: "user/login"
+- **Request Body**:
+  ```json
+  {
+    "username": "string",
+    "password": "string"
+  }
+  ```
+- **Success Response**: User object (without password)
+- **Error Responses**: "Username cannot be empty", "Password cannot be empty", "Invalid username or password"
+
+#### Register
+- **Action**: "user/register"
+- **Request Body**: Complete User object
+  ```json
+  {
+    "username": "string",
+    "password": "string",
+    "fullName": "string",
+    "email": "string",
+    "age": number
+  }
+  ```
+- **Success Response**: Registered User object (without password)
+- **Error Responses**: "Username cannot be empty", "Password cannot be empty", "Username already exists"
+
+#### Get User
+- **Action**: "user/getuser"
+- **Request Body**:
+  ```json
+  {
+    "username": "string"
+  }
+  ```
+- **Success Response**: User object (without password)
+- **Error Responses**: "Username cannot be empty", "User not found"
+
+#### Update User
+- **Action**: "user/updateuser"
+- **Request Body**: User object with updated fields
+  ```json
+  {
+    "username": "string",
+    "password": "string", // Optional, if empty, existing password is kept
+    "fullName": "string",
+    "email": "string",
+    "age": number
+  }
+  ```
+- **Success Response**: Updated User object (without password)
+- **Error Responses**: "Username cannot be empty", "User not found"
+
+#### Get User Games
+- **Action**: "user/getusergames"
+- **Request Body**:
+  ```json
+  {
+    "username": "string"
+  }
+  ```
+- **Success Response**: Collection of Game objects
+- **Error Responses**: "Username cannot be empty", "User not found"
+
+#### Add Game to User
+- **Action**: "user/addgametouser"
+- **Request Body**:
+  ```json
+  {
+    "username": "string",
+    "gameName": "string"
+  }
+  ```
+- **Success Response**: Added Game object
+- **Error Responses**: "Username cannot be empty", "Game name cannot be empty", "User not found", "Game not found", "User already has this game"
+
+#### Remove Game from User
+- **Action**: "user/removegamefromuser"
+- **Request Body**:
+  ```json
+  {
+    "username": "string",
+    "gameName": "string"
+  }
+  ```
+- **Success Response**: Success message
+- **Error Responses**: "Username cannot be empty", "Game name cannot be empty", "User not found", "User does not have this game"
+
+#### Get All Users
+- **Action**: "user/getallusers"
+- **Request Body**: Empty or null
+- **Success Response**: Collection of User objects (without passwords)
+
+### Game Controller Endpoints
+
+#### Get Game
+- **Action**: "game/getgame"
+- **Request Body**:
+  ```json
+  {
+    "name": "string"
+  }
+  ```
+- **Success Response**: Game object
+- **Error Responses**: "Missing game name", "Game not found"
+
+#### Get All Games
+- **Action**: "game/getallgames"
+- **Request Body**: Empty or null
+- **Success Response**: Collection of Game objects
+
+#### Search Games
+- **Action**: "game/searchgames"
+- **Request Body**:
+  ```json
+  {
+    "query": "string"
+  }
+  ```
+- **Success Response**: Collection of matching Game objects
+- **Error Responses**: "Missing search query"
+
+#### Add Game (Admin only)
+- **Action**: "game/addgame"
+- **Request Body**: Complete Game object
+  ```json
+  {
+    "name": "string",
+    "sizeGB": number,
+    "genres": ["string"],
+    "description": "string",
+    "minAge": number,
+    "imageUrl": "string" // Optional
+  }
+  ```
+- **Success Response**: Added Game object
+- **Error Responses**: "Missing game data", "Game already exists"
+
+#### Update Game (Admin only)
+- **Action**: "game/updategame"
+- **Request Body**: Game object with updated fields
+- **Success Response**: Updated Game object
+- **Error Responses**: "Missing game data", "Game not found"
+
+#### Delete Game (Admin only)
+- **Action**: "game/deletegame"
+- **Request Body**:
+  ```json
+  {
+    "name": "string"
+  }
+  ```
+- **Success Response**: Success message
+- **Error Responses**: "Missing game name", "Game not found"
+
+## 3. Data Models
+
+### User Model
+```java
+public class User {
+    private String username;                    // Unique identifier
+    private String password;                    // Password
+    private String fullName;                    // Full name
+    private String email;                       // Email address
+    private int age;                            // Age
+    private Map<String, Game> gameLibrary;      // User's game library (key: game name)
+    
+    // Getters and setters for all fields
+}
+```
+
+### Game Model
+```java
+public class Game {
+    private String name;            // Unique identifier
+    private double sizeGB;          // Game size in gigabytes
+    private List<String> genres;    // List of game genres
+    private String description;     // Game description
+    private int minAge;             // Minimum age to play the game
+    private String imageUrl;        // Link to game image (optional)
+    
+    // Getters and setters for all fields
+}
+```
+
+## 4. Client-Side Implementation Requirements
+
+According to the project documentation, the client-side should implement:
+
+### Client Network Components
+
+#### ServerConnector
+- Must handle communication with the server
+- Should implement methods to send requests and receive responses
+- Must handle JSON serialization/deserialization
+- Should implement connection management and error handling
+
+#### GameStoreClient
+- Should serve as a facade for client-side operations
+- Must implement methods for all user and game operations
+- Should manage the current user session
+- Must handle communication with the server via ServerConnector
+
+### User Interface Components
+
+The client should implement these UI components as specified in the project documentation:
+
+1. **LoginWindow** - For user authentication
+2. **RegisterWindow** - For user registration
+3. **MainWindow** - Central hub after login
+4. **UserLibraryWindow** - Display and manage user's games
+5. **GameSearchWindow** - Search for games
+6. **UserEditWindow** - Edit user details
+7. **GameDetailsWindow** - Display game details
+8. **ClientDriver** - Entry point for the application
+
+## 5. Compatibility Verification Checklist
+
+When verifying client-server compatibility, check the following:
+
+### Network Communication
+- [ ] Client can connect to the server on the correct port
+- [ ] Client sends properly formatted JSON requests
+- [ ] Client can parse server responses correctly
+- [ ] Client handles connection errors gracefully
+
+### Authentication
+- [ ] Client can register new users
+- [ ] Client can authenticate users with correct credentials
+- [ ] Client handles authentication failures appropriately
+- [ ] Client stores and manages user session information
+
+### User Operations
+- [ ] Client can retrieve user details
+- [ ] Client can update user profiles
+- [ ] Client can view user's game library
+- [ ] Client can add games to user's library
+- [ ] Client can remove games from user's library
+
+### Game Operations
+- [ ] Client can retrieve game details
+- [ ] Client can list all available games
+- [ ] Client can search for games by description
+- [ ] Admin functions work correctly (add/update/delete games)
+
+### Data Handling
+- [ ] Client correctly serializes/deserializes User objects
+- [ ] Client correctly serializes/deserializes Game objects
+- [ ] Client handles empty or null responses appropriately
+- [ ] Client validates input before sending to server
+
+### Error Handling
+- [ ] Client displays appropriate error messages from server
+- [ ] Client handles network errors gracefully
+- [ ] Client handles unexpected server responses
+
+## 6. Testing Procedure
+
+1. **Connection Testing**
+   - Start the server on the default port
+   - Attempt to connect from the client
+   - Verify successful connection
+
+2. **Authentication Testing**
+   - Register a new test user
+   - Attempt login with correct credentials
+   - Attempt login with incorrect credentials
+   - Verify appropriate responses
+
+3. **User Operations Testing**
+   - Retrieve and display user profile
+   - Update user profile information
+   - Verify changes are persisted
+
+4. **Game Library Testing**
+   - View user's game library (initially empty)
+   - Add a game to the library
+   - Verify game appears in library
+   - Remove game from library
+   - Verify game is removed
+
+5. **Game Catalog Testing**
+   - List all available games
+   - Search for games with various queries
+   - View detailed information for specific games
+
+6. **Admin Operations Testing** (if applicable)
+   - Add a new game to the catalog
+   - Update an existing game
+   - Delete a game
+   - Verify changes are reflected in the catalog
+
+## 7. Common Compatibility Issues
+
+1. **JSON Serialization Differences**
+   - Different libraries may handle JSON differently
+   - Ensure date formats, null values, and nested objects are handled consistently
+
+2. **Character Encoding Issues**
+   - Ensure both client and server use UTF-8 encoding
+   - Watch for special characters in user input
+
+3. **Network Timeout Handling**
+   - Client should implement appropriate timeouts
+   - Client should retry failed connections when appropriate
+
+4. **Version Mismatches**
+   - If the server API changes, the client must be updated
+   - Consider implementing version checking in the protocol
+
+5. **Data Validation Differences**
+   - Server may validate data differently than client
+   - Client should implement similar validation rules to prevent rejected requests
+
+## Conclusion
+
+This guide provides a comprehensive overview of the requirements for ensuring compatibility between the GameStore client and server implementations. By following these guidelines and checking all the items in the verification checklist, you can ensure that the client-side implementation will work correctly with the existing server-side implementation.
+
+Remember that both the client and server must adhere strictly to the communication protocol and data formats specified in this document to ensure proper interoperability.

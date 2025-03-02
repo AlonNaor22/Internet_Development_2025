@@ -1,0 +1,176 @@
+# GameStore Project Explanation
+
+## Project Overview
+
+The GameStore is a client-server application designed to manage a computer game store. The server-side implementation (which is the focus of this explanation) provides functionality for managing games and users, including user registration, authentication, game catalog management, and user game library management.
+
+## Project Architecture
+
+The project follows a layered architecture with clear separation of concerns:
+
+1. **Model Layer** - Data objects
+2. **DAO Layer** - Data Access Objects for persistence
+3. **Service Layer** - Business logic
+4. **Controller Layer** - Request handling and response generation
+5. **Network Layer** - Client-server communication
+
+## Key Components and Their Connections
+
+### Model Layer
+
+#### Game.java
+- Represents a game in the store with properties like name, size, genres, description, minimum age, and image URL
+- Implements Serializable to allow saving to a file
+- The name property serves as a unique identifier
+
+#### User.java
+- Represents a user with properties like username, password, full name, email, age, and game library
+- Implements Serializable to allow saving to a file
+- The username property serves as a unique identifier
+- Contains a Map<String, Game> to store the user's game library, with game names as keys
+
+### DAO Layer
+
+#### IDao.java
+- Generic interface defining CRUD operations (Create, Read, Update, Delete)
+- Defines methods like save(), delete(), get(), getAll(), and exists()
+- Used by both GameFileDao and UserFileDao
+
+#### UserFileDao.java
+- Implements IDao<User, String> for user data persistence
+- Stores users in a Map<String, User> in memory
+- Serializes/deserializes the map to/from a file (default: "data/users.dat")
+- Provides thread-safe operations for user data
+
+#### GameFileDao.java
+- Similar to UserFileDao but for Game objects
+- Implements IDao<Game, String> for game data persistence
+- Uses "data/games.dat" as the default storage file
+
+### Service Layer
+
+#### UserService.java
+- Provides business logic for user-related operations
+- Uses UserFileDao for data access
+- Implements methods for user authentication, registration, profile management, and game library management
+- Acts as a bridge between controllers and the DAO layer
+
+#### GameService.java
+- Provides business logic for game-related operations
+- Uses GameFileDao for data access
+- Implements methods for game retrieval, addition, update, deletion, and search
+
+### Controller Layer
+
+#### UserController.java
+- Handles user-related requests from clients
+- Uses UserService for business logic
+- Implements methods for login, registration, profile management, and game library management
+- Returns Response objects with appropriate status codes and data
+
+#### GameController.java
+- Handles game-related requests from clients
+- Uses GameService for business logic
+- Implements methods for game retrieval, search, addition, update, and deletion
+
+#### ControllerFactory.java
+- Factory pattern implementation for creating controllers
+- Returns appropriate controller based on the request type (user or game)
+
+### Network Layer
+
+#### Request.java
+- Represents a client request with headers and a body
+- Headers include an "action" that specifies the controller and method to call
+- The body contains the data needed for the request
+
+#### Response.java
+- Represents a server response with status code, message, and data
+- Status codes: 200 for success, 400 for error, etc.
+- Provides static methods for creating common responses
+
+#### HandleRequest.java
+- Handles a single client request in a separate thread
+- Parses the request, routes it to the appropriate controller method, and sends the response
+- Uses reflection to dynamically call controller methods
+
+#### Server.java
+- Manages the server socket and listens for client connections
+- Creates a thread pool for handling multiple client connections concurrently
+- Initializes the DAOs, services, and controllers
+- Adds sample data (games and admin user) if none exist
+
+#### ServerDriver.java
+- Entry point for the server application
+- Creates and starts the server on a specified port (default: 34567)
+- Adds a shutdown hook for graceful server termination
+
+## User Creation and Storage Process
+
+### How New User Information is Created and Saved
+
+1. **Client Request**: The client sends a registration request to the server with user details (username, password, full name, email, age).
+
+2. **Request Handling**: 
+   - The request is received by the Server and passed to HandleRequest
+   - HandleRequest parses the request and identifies it as a user registration request
+   - It routes the request to the UserController's register method
+
+3. **Controller Processing**:
+   - UserController.register() validates the user data
+   - It checks if the username already exists using UserService
+   - If validation passes, it calls UserService.addUser()
+
+4. **Service Layer Processing**:
+   - UserService.addUser() performs additional validation
+   - It checks again if the user already exists
+   - It calls UserDao.save() to persist the user
+
+5. **DAO Layer Processing**:
+   - UserFileDao.save() adds the user to the in-memory map (usersMap)
+   - It then calls saveUsers() to persist the entire map to the file
+
+6. **File Persistence**:
+   - The saveUsers() method serializes the entire usersMap to the file (data/users.dat)
+   - It ensures the directory exists before writing
+   - The serialization uses Java's ObjectOutputStream to write the map as a binary object
+
+7. **Response Generation**:
+   - After successful saving, a success response is created and sent back to the client
+   - The response includes the user object (with password removed for security)
+
+### User Authentication Process
+
+1. The client sends a login request with username and password
+2. HandleRequest routes it to UserController.login()
+3. UserController calls UserService.authenticate()
+4. UserService retrieves the user from UserFileDao and compares passwords
+5. If authentication is successful, the user details (without password) are returned in the response
+
+### User Profile Update Process
+
+1. The client sends an update request with modified user details
+2. HandleRequest routes it to UserController.updateUser()
+3. UserController validates the data and calls UserService.updateUser()
+4. UserService updates the user in the database via UserFileDao.save()
+5. The updated user is serialized to the file
+
+## Data Flow and Communication
+
+1. **Client to Server**: Clients communicate with the server using JSON-formatted requests over TCP/IP sockets
+2. **Request Parsing**: The server parses JSON requests into Request objects
+3. **Controller Routing**: Requests are routed to appropriate controllers based on the action header
+4. **Business Logic**: Controllers use services to execute business logic
+5. **Data Access**: Services use DAOs to access and modify data
+6. **Persistence**: DAOs serialize data to files for persistence
+7. **Response Generation**: Results are wrapped in Response objects and sent back to clients as JSON
+
+## Security Considerations
+
+1. **Password Handling**: Passwords are stored in plain text (a security weakness that should be improved)
+2. **Data Validation**: Input validation occurs at multiple levels (controller, service, DAO)
+3. **Response Security**: Passwords are removed from user objects before sending in responses
+
+## Conclusion
+
+The GameStore server implements a well-structured, multi-layered architecture that separates concerns and provides clear interfaces between components. The user creation and storage process follows a logical flow through these layers, with appropriate validation and error handling at each step. The system uses file-based persistence for storing user and game data, with in-memory caching for performance.
